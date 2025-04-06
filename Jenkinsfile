@@ -57,3 +57,12 @@ pipeline {
         }
     }
 }
+
+ post {
+        success {
+            slackSend channel: '#devops', message: "SUCCESS: Job ${env.JOB_NAME} - Build ${env.BUILD_NUMBER}"
+        }
+        failure {
+            slackSend channel: '#devops', message: "FAILED: Job ${env.JOB_NAME} - Build ${env.BUILD_NUMBER}"
+        }
+ }
