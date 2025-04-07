@@ -1,0 +1,16 @@
+[Unit]
+Description=DevOps API Service
+After=network.target
+{% if mongodb_ip == 'localhost' %}
+After=mongod.service
+{% endif %}
+
+[Service]
+User={{ app_user }}
+WorkingDirectory={{ app_dir }}
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node {{ app_dir }}/index.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

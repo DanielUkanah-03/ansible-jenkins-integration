@@ -1,0 +1,86 @@
+---
+- name: Deploy Node.js App with Nginx
+  hosts: 172.31.26.110
+  become: yes
+  vars:
+    app_dir: /opt/ansible-jenkins-integration
+    app_user: centos  # Create this user or use 'root' (not recommended for production)
+
+  tasks:
+    # Install required packages
+    - name: Install Node.js and npm
+      yum:
+        name:
+          - nodejs
+          - npm
+        state: present
+
+    - name: Install Nginx
+      yum:
+        name: nginx
+        state: present
+
+    # Set up application directory
+    - name: Create application directory
+      file:
+        path: "{{ docroot }}"
+        state: directory
+       
+
+    # Copy the app.zip from Jenkins workspace to the target server
+    - name: Transfer application zip
+      copy:
+        src: "app.zip"  # Local path (from Jenkins workspace)
+        dest: "/tmp/app.zip"
+        owner: "{{ app_user }}"
+
+    # Extract the zip file
+    - name: Unzip application
+      unarchive:
+        src: "/tmp/app.zip"
+        dest: "{{ app_dir }}"
+        remote_src: yes
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+
+    # Install dependencies
+    - name: Install npm dependencies
+      npm:
+        path: "{{ app_dir }}"
+        state: present
+
+    # Configure Nginx
+    - name: Configure Nginx reverse proxy
+      template:
+        src: "nginx.conf.j2"
+        dest: "/etc/nginx/conf.d/devops.conf"
+      notify: restart nginx
+
+    # Configure systemd service
+    - name: Create systemd service
+      template:
+        src: "devops-api.service.j2"
+        dest: "/etc/systemd/system/devops-api.service"
+      notify: restart app
+
+    # Start services
+    - name: Enable and start services
+      systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      with_items:
+        - nginx
+        - devops-api
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+
+    - name: restart app
+      systemd:
+        name: devops-api
+        state: restarted
+...
